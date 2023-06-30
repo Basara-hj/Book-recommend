@@ -1,21 +1,36 @@
 import streamlit as st
 import openai
-
 from supabase import create_client
+@st.cache_resource
+def init_connection():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
+
+st.markdown(
+    """
+<style>
+footer {
+    visibility: hidden;
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+supabase = init_connection()
+
 
 st.title("Recommend Book Report✍️")
-
 openai.api_key = st.secrets.OPENAI_TOKEN
-
 def generate_prompt(genre,genre2, writer, description, keywords,n):
     prompt =  f""" 
-교수로부터 특정 책의 장르를 받아와 관련 도서를 추천하는 시각에서 책 리뷰를 작성하는 과제입니다.
+특정 도서 장르에 대한 교수님의 의견을 바탕으로 관련 도서를 추천하는 프롬프트입니다
+제공된 정보를 활용하여 관련 도서를 자세히 소개하고, 해당 도서와 연관된 인사이트를 포함해주세요.
 {writer}가 입력되었을 때 , 그 저자의 책을 추천합니다.
-해당 책의 특징을 상세히 드러내며, 책에서 얻은 통찰을 포함해야 합니다.
-만약 장르, 작가, 키워드, 시놉시스 등이 주어진다면, 입력한 값이 반드시 포함되어야 합니다.
-추천하는 책의 영문 제목과 한글 제목을 함께 알려주세요.
-A4 용지 한 장 분량으로 작성하고, 추천하는 책과 비슷한 다른 {n}권의 책을 추천해주세요.
-
+만약 장르, 작가, 키워드, 도서 설명 등의 정보가 제공되었다면, 해당 정보를 포함하여 작성해주세요.
+추천하는 도서의 영문 제목과 한국어 제목을 알려주세요.
+ A4 한 장에 작성하고, 추천 도서와 유사한 다른 도서를 총 {n}권 추천해주세요.
 
 ---
 책의 장르: {genre}
@@ -82,14 +97,18 @@ with st.form("my_form"):
                 value= generated_text,
                 height=200
             )
+
+    if 'search_history' not in st.session_state:
+        st.session_state.search_history = []
+
     st.sidebar.markdown("## Search History")
     for item in st.session_state.search_history:
         st.sidebar.write(item)
 
-    # 검색 기능 구현
-    search_query = st.sidebar.text_input("Book Search", value="", key="book_search",max_chars=50)
-    if st.sidebar.button("Search"):
+    if search_button:
         if search_query:
             st.session_state.search_history.append(search_query)
 
-            perform_search(search_query)
+    reset_button = st.sidebar.button("Reset")
+    if reset_button:
+        st.session_state.search_history = []
